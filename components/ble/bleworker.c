@@ -142,41 +142,47 @@ void addBleWrite(unsigned char *thing, int len) {
 }
 
 int check(unsigned char *thing, int len) {
-    unsigned char da=thing[0];
-    unsigned char result=da;
-    if(da==0){
-        for(int k=1;k<len-1;k++){
-            result=result^thing[k];
-        }
-        if(result==thing[len-1]){
-            return 1;
-        }
+    unsigned char da = thing[0];
+    unsigned char result = da;
+    for (int k = 1; k < len - 1; k++) {
+        result = result ^ thing[k];
     }
+    if (result == thing[len - 1]) {
+        return 1;
+    }
+
     return 0;
 }
 
-int to3Int(unsigned char *thing){
-    return thing[0]&(thing[1])<<8&(thing[2]<<16);
+int to3Int(unsigned char *thing) {
+    int fuck=thing[0] + ((thing[1]) << 8 )+ ((thing[2] << 16));
+    return fuck;
 }
-int total_len=0;
-int total_len_index=0;
+
+static int total_len = 0;
+static int total_len_index = 0;
+
 void update(unsigned char *thing, int len) {
-    unsigned char mother[1]={0xaa};
-    if(len>7){
-        if(check(thing,len)){
-            if(to3Int(thing)==0){
-                total_len_index=0;
-                total_len= to3Int(thing+3);
+    unsigned char mother[1] = {0xaa};
+    if (len > 7) {
+        if (check(thing, len)) {
+            ESP_LOGI(TAG, "checkok");
+            if (to3Int(thing) == 0) {
+                total_len_index = 0;
+                total_len = to3Int(thing + 3);
                 ESP_LOGI(TAG, "good %d", total_len);
                 ota_start();
             }
-            total_len_index+=(len-7);
-            ota_feed((char *)(thing+6),len-7);
+            total_len_index += (len - 7);
+            ota_feed((char *) (thing + 6), len - 7);
             om = ble_hs_mbuf_from_flat(mother, 1);
             ble_gattc_notify_custom(conn_handle, hrs_hrm_handle, om);
-            if(total_len_index==total_len){
+            ESP_LOGI(TAG, "current  %d ,  total %d",total_len_index,total_len);
+            if (total_len_index == total_len) {
                 ota_end();
             }
+        } else {
+            ESP_LOGI(TAG, "checkfail");
         }
     }
 }

@@ -115,8 +115,8 @@ gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
                                 0,
                                 200,
                                 writeBuf, &writeBufLen);
-        writeBuf[writeBufLen] = 0;
-        MODLOG_DFLT(INFO, "\nfuck    %s  %d\n", writeBuf,writeBufLen);
+//        writeBuf[writeBufLen] = 0;
+      //  MODLOG_DFLT(INFO, "\nfuck    %s  %d\n", writeBuf,writeBufLen);
         update(writeBuf,writeBufLen);
         return rc;
     }
