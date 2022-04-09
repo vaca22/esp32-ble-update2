@@ -48,7 +48,7 @@ static unsigned char crc8_compute(unsigned char *pdata, unsigned data_size,
     return crc_in;
 };
 
-static void cmdGet() {
+static void cmd_get() {
     unsigned int a = 0;
     unsigned int b = 0;
     switch (tcpcmd[1]) {
@@ -106,7 +106,7 @@ static void handleDataPool() {
                         tcpcmd[j] = tcpReceive[i + j];
                     }
                     if (crc8_compute(tcpcmd, len + 4, 0) == tcpcmd[len + 4]) {
-                        cmdGet();
+                        cmd_get();
                         if (i + 5 + len == size) {
                             currentIndex = 0;
                         } else {
@@ -139,7 +139,7 @@ void addBleWrite(unsigned char *thing, int len) {
 }
 
 
-static void SendFileData(unsigned char *contents, int len, unsigned char *mother, unsigned char cmd) {
+static void sendFileData(unsigned char *contents, int len, unsigned char *mother, unsigned char cmd) {
     mother[0] = (unsigned char) 0xA5;
     mother[1] = (unsigned char) cmd;
     mother[2] = (unsigned char) ~cmd;

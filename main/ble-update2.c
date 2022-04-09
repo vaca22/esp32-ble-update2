@@ -17,5 +17,5 @@ void app_main(void)
     initNvs();
 
     wifi_init_vaca();
-    initBle();
+    init_ble();
 }

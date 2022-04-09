@@ -30,7 +30,7 @@ int scli_receive_key(int *key);
 /** Misc. */
 void print_bytes(const uint8_t *bytes, int len);
 void print_addr(const void *addr);
-void initBle(void);
+void init_ble(void);
 
 
 

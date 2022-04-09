@@ -18,24 +18,22 @@ struct os_mbuf *om;
 uint16_t hrs_hrm_handle;
 uint16_t conn_handle;
 /* 59462f12-9543-9999-12c8-58b459a2712d */
-static const ble_uuid128_t gatt_svr_svc_sec_test_uuid =
+static const ble_uuid128_t gatt_server_uuid =
         BLE_UUID128_INIT(0x2d, 0x71, 0xa2, 0x59, 0xb4, 0x58, 0xc8, 0x12,
                          0x99, 0x99, 0x43, 0x95, 0x12, 0x2f, 0x46, 0x59);
 
-/* 5c3a659e-897e-45e1-b016-007107c96df6 */
-static const ble_uuid128_t gatt_svr_chr_sec_test_rand_uuid2 =
+/* 4c3a659e-897e-45e1-b016-007107c96df6 */
+static const ble_uuid128_t gatt_notify_uuid2 =
         BLE_UUID128_INIT(0xf6, 0x6d, 0xc9, 0x07, 0x71, 0x00, 0x16, 0xb0,
                          0xe1, 0x45, 0x7e, 0x89, 0x9e, 0x65, 0x3a, 0x4c);
-static const ble_uuid128_t gatt_svr_chr_sec_test_rand_uuid =
+
+/* 5c3a659e-897e-45e1-b016-007107c96df6 */
+static const ble_uuid128_t gatt_write_uuid =
         BLE_UUID128_INIT(0xf6, 0x6d, 0xc9, 0x07, 0x71, 0x00, 0x16, 0xb0,
                          0xe1, 0x45, 0x7e, 0x89, 0x9e, 0x65, 0x3a, 0x5c);
 
-/* 5c3a659e-897e-45e1-b016-007107c96df7 */
-static const ble_uuid128_t gatt_svr_chr_sec_test_static_uuid =
-        BLE_UUID128_INIT(0xf7, 0x6d, 0xc9, 0x07, 0x71, 0x00, 0x16, 0xb0,
-                         0xe1, 0x45, 0x7e, 0x89, 0x9e, 0x65, 0x3a, 0x5c);
 
-static const char *tag = "wsSnake";
+static const char *tag = "ble_good";
 
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 
@@ -50,32 +48,25 @@ gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
 
-static unsigned char writeBuf[50];
+static unsigned char writeBuf[200];
 uint16_t writeBufLen = 0;
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         {
                 /*** Service: Security test. */
                 .type = BLE_GATT_SVC_TYPE_PRIMARY,
-                .uuid = &gatt_svr_svc_sec_test_uuid.u,
+                .uuid = &gatt_server_uuid.u,
                 .characteristics = (struct ble_gatt_chr_def[]) {{
                                                                         /* Characteristic: Heart-rate measurement */
-                                                                        .uuid = &gatt_svr_chr_sec_test_rand_uuid2.u,
+                                                                        .uuid = &gatt_notify_uuid2.u,
                                                                         .access_cb = gatt_svr_chr_access_sec_test,
                                                                         .val_handle = &hrs_hrm_handle,
                                                                         .flags = BLE_GATT_CHR_F_NOTIFY,
                                                                 },
                                                                 {
                                                                         /*** Characteristic: Random number generator. */
-                                                                        .uuid = &gatt_svr_chr_sec_test_rand_uuid.u,
+                                                                        .uuid = &gatt_write_uuid.u,
                                                                         .access_cb = gatt_svr_chr_access_sec_test,
-                                                                        .flags = BLE_GATT_CHR_F_READ,
-                                                                },
-                                                                {
-                                                                        /*** Characteristic: Static value. */
-                                                                        .uuid = &gatt_svr_chr_sec_test_static_uuid.u,
-                                                                        .access_cb = gatt_svr_chr_access_sec_test,
-                                                                        .flags = BLE_GATT_CHR_F_READ |
-                                                                                 BLE_GATT_CHR_F_WRITE,
+                                                                        .flags = BLE_GATT_CHR_F_WRITE_NO_RSP ,
                                                                 },
                                                                 {
                                                                         0, /* No more characteristics in this service. */
@@ -121,38 +112,16 @@ gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
      * 128-bit UUID.
      */
 
-    if (ble_uuid_cmp(uuid, &gatt_svr_chr_sec_test_rand_uuid.u) == 0) {
-        assert(ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR);
-//   om = ble_hs_mbuf_from_flat(hrm, sizeof(hrm));
-//      ble_gattc_notify_custom(conn_handle, hrs_hrm_handle, om);
-        /* Respond with a 32-bit random number. */
-        char fu[] = "good";
-        rc = os_mbuf_append(ctxt->om, fu, sizeof fu);
-        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    if (ble_uuid_cmp(uuid, &gatt_write_uuid.u) == 0) {
+        rc = gatt_svr_chr_write(ctxt->om,
+                                0,
+                                200,
+                                writeBuf, &writeBufLen);
+        writeBuf[writeBufLen] = 0;
+        MODLOG_DFLT(INFO, "\nfuck    %s  %d\n", writeBuf,writeBufLen);
+        return rc;
     }
 
-    if (ble_uuid_cmp(uuid, &gatt_svr_chr_sec_test_static_uuid.u) == 0) {
-        switch (ctxt->op) {
-            case BLE_GATT_ACCESS_OP_READ_CHR:
-                rc = os_mbuf_append(ctxt->om, &gatt_svr_sec_test_static_val,
-                                    sizeof gatt_svr_sec_test_static_val);
-                return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
-
-            case BLE_GATT_ACCESS_OP_WRITE_CHR:
-
-                rc = gatt_svr_chr_write(ctxt->om,
-                                        0,
-                                        22,
-                                        writeBuf, &writeBufLen);
-                writeBuf[writeBufLen] = 0;
-                addBleWrite(writeBuf, writeBufLen);
-                return rc;
-
-            default:
-                assert(0);
-                return BLE_ATT_ERR_UNLIKELY;
-        }
-    }
 
     /* Unknown characteristic; the nimble stack should not have called this
      * function.
@@ -450,7 +419,7 @@ void bleprph_host_task(void *param) {
     nimble_port_freertos_deinit();
 }
 
-void initBle(void) {
+void init_ble(void) {
     ESP_ERROR_CHECK(esp_nimble_hci_and_controller_init());
 
     nimble_port_init();
