@@ -14,11 +14,14 @@
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "console/console.h"
+#include "my_ota.h"
 
 static const char *TAG = "BLEWORKER";
-static unsigned char tcpReceive[200];
+#define Buffer_Size 2000
+#define CMD_Size 200
+static unsigned char tcpReceive[Buffer_Size];
 static int currentIndex = 0;
-static unsigned char tcpcmd[50];
+static unsigned char tcpcmd[CMD_Size];
 static struct os_mbuf *om;
 
 #define CMD_READ_FILE_DATA 0xF3
@@ -90,13 +93,13 @@ static void cmd_get() {
 static void handleDataPool() {
     int size = currentIndex + 1;
     int len;
-    bool contineLoopFlag = false;
+    bool continueLoopFlag = false;
     while (1) {
         if (currentIndex < 5) {
             return;
         }
         size = currentIndex + 1;
-        contineLoopFlag = false;
+        continueLoopFlag = false;
         for (int i = 0; i < size - 4; i++) {
             if (tcpReceive[i] == 0xa5 &&
                 tcpReceive[i + 1] == ((unsigned char) (~tcpReceive[i + 2]))) {
@@ -106,7 +109,7 @@ static void handleDataPool() {
                         tcpcmd[j] = tcpReceive[i + j];
                     }
                     if (crc8_compute(tcpcmd, len + 4, 0) == tcpcmd[len + 4]) {
-                        cmd_get();
+
                         if (i + 5 + len == size) {
                             currentIndex = 0;
                         } else {
@@ -115,13 +118,13 @@ static void handleDataPool() {
                             }
                             currentIndex = currentIndex - i - 5 - len;
                         }
-
-                        contineLoopFlag = true;
+                        cmd_get();
+                        continueLoopFlag = true;
                     }
                 }
             }
         }
-        if (contineLoopFlag == false) {
+        if (continueLoopFlag == false) {
             return;
         }
     }
@@ -132,12 +135,51 @@ void addBleWrite(unsigned char *thing, int len) {
         tcpReceive[currentIndex + k] = thing[k];
     }
     currentIndex += len;
-    if (currentIndex > 200) {
+    if (currentIndex > Buffer_Size) {
         currentIndex = 0;
     }
     handleDataPool();
 }
 
+int check(unsigned char *thing, int len) {
+    unsigned char da=thing[0];
+    unsigned char result=da;
+    if(da==0){
+        for(int k=1;k<len-1;k++){
+            result=result^thing[k];
+        }
+        if(result==thing[len-1]){
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int to3Int(unsigned char *thing){
+    return thing[0]&(thing[1])<<8&(thing[2]<<16);
+}
+int total_len=0;
+int total_len_index=0;
+void update(unsigned char *thing, int len) {
+    unsigned char mother[1]={0xaa};
+    if(len>7){
+        if(check(thing,len)){
+            if(to3Int(thing)==0){
+                total_len_index=0;
+                total_len= to3Int(thing+3);
+                ESP_LOGI(TAG, "good %d", total_len);
+                ota_start();
+            }
+            total_len_index+=(len-7);
+            ota_feed((char *)(thing+6),len-7);
+            om = ble_hs_mbuf_from_flat(mother, 1);
+            ble_gattc_notify_custom(conn_handle, hrs_hrm_handle, om);
+            if(total_len_index==total_len){
+                ota_end();
+            }
+        }
+    }
+}
 
 static void sendFileData(unsigned char *contents, int len, unsigned char *mother, unsigned char cmd) {
     mother[0] = (unsigned char) 0xA5;

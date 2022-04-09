@@ -41,7 +41,6 @@ static uint8_t own_addr_type;
 
 void ble_store_config_init(void);
 
-static uint8_t gatt_svr_sec_test_static_val;
 
 static int
 gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
@@ -102,7 +101,6 @@ gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg) {
     const ble_uuid_t *uuid;
-    int rand_num;
     int rc;
     // static uint8_t hrm[]="22345";
 
@@ -119,6 +117,7 @@ gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle,
                                 writeBuf, &writeBufLen);
         writeBuf[writeBufLen] = 0;
         MODLOG_DFLT(INFO, "\nfuck    %s  %d\n", writeBuf,writeBufLen);
+        update(writeBuf,writeBufLen);
         return rc;
     }
 
